@@ -43,6 +43,10 @@ def get_credentials():
     access_key_id = os.environ.get("FOCUSAVATAR_ACCESS_KEY_ID", "").strip()
     access_key_secret = os.environ.get("FOCUSAVATAR_ACCESS_KEY_SECRET", "").strip()
     if access_key_id and access_key_secret:
+        # 环境变量已设置，直接使用，不提示输入
+        print(f"✓ 已从环境变量读取 accessKeyId")
+        print(f"✓ 已从环境变量读取 accessKeySecret")
+        print()
         return access_key_id, access_key_secret
     if not access_key_id:
         access_key_id = prompt("请输入 accessKeyId（可设置环境变量 FOCUSAVATAR_ACCESS_KEY_ID）: ").strip()
@@ -61,7 +65,7 @@ def make_auth_headers(access_key_id: str, access_key_secret: str):
 
 def run_submit_flow(access_key_id: str, access_key_secret: str):
     """提交任务流程：③ MP3 → ④ MP4 → ⑤ 文字 → 确认 → 提交 → 轮询结果"""
-    print("\n  📌 接下来请按顺序完成：③ MP3 地址 → ④ MP4 地址 → ⑤ 文字内容\n")
+    print("\n  📌 接下来，请您一步一步操作\n")
     while True:
         mp3 = ""
         while not mp3:
@@ -81,7 +85,7 @@ def run_submit_flow(access_key_id: str, access_key_secret: str):
             if not text:
                 print("❌ 不能为空，请重新输入")
 
-        print("\n📋 ⑥ 请确认信息：")
+        print("\n请确认信息：")
         print(f"  MP3: {mp3}")
         print(f"  MP4: {mp4}")
         print(f"  文字: {text}")
@@ -155,8 +159,13 @@ def run_submit_flow(access_key_id: str, access_key_secret: str):
                     headers=headers,
                     timeout=999999,
                 )
+                r.raise_for_status()
+                # 处理返回：如果是字符串就解析，已经是 dict 直接用
                 raw = r.json()
-                data = json.loads(raw) if isinstance(raw, str) else raw
+                if isinstance(raw, str):
+                    data = json.loads(raw)
+                else:
+                    data = raw
 
                 progress_val = data.get("progress")
                 status_str = data.get("status", "")
@@ -174,14 +183,17 @@ def run_submit_flow(access_key_id: str, access_key_secret: str):
                 print(f"  ⏳ 实时进度: {progress_str}  状态: {status_str or '处理中'}  [第 {poll_count} 次轮询]")
                 sys.stdout.flush()
 
-                if data.get("status") == "done" and "videoUrl" in data:
+                # 检查是否完成或失败，任意一种情况都退出循环结束会话
+                status = data.get("status")
+                if status == "done" and "videoUrl" in data:
                     print("\n✅ 生成完成!")
                     print(f"\n📺 视频链接: {data['videoUrl']}")
                     return
-                elif data.get("status") == "error":
+                elif status == "error" or status == "fail":
                     print(f"\n❌ 生成失败: {data.get('message', '未知错误')}")
                     return
                 else:
+                    # 还在处理中，继续轮询
                     time.sleep(11)
             except Exception as e:
                 print(f"  ⚠️ 轮询异常 (将重试): {e}")
@@ -199,8 +211,12 @@ def run_query_flow(access_key_id: str, access_key_secret: str):
             h = make_auth_headers(key_id, key_secret)
             r = requests.post(url, json={"orderNo": order_no}, headers=h, timeout=30)
             r.raise_for_status()
+            # 处理返回：如果是字符串就解析，已经是 dict 直接用
             raw = r.json()
-            return json.loads(raw) if isinstance(raw, str) else raw
+            if isinstance(raw, str):
+                return json.loads(raw)
+            else:
+                return raw
 
     print("  📌 查询任务结果：请输入任务单号 (orderNo)\n")
     order_no = prompt("请输入 orderNo: ").strip()
@@ -231,6 +247,8 @@ def main():
     print("\n" + "=" * 50)
     print("       数字人生成工具")
     print("=" * 50)
+    print("  📌 提醒：使用前需要先前往 https://yunji.focus-jd.cn 获取 accessKeyId 和 accessKeySecret")
+    print()
     print("  📌 ② 选择操作模式（两种模式）：")
     print("     [1] 提交任务（生成视频）— 走 focusavatar 原流程")
     print("     [2] 查询任务结果 — 需提供 orderNo")
