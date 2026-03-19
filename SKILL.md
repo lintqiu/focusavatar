@@ -100,7 +100,7 @@ BASE_URL 由环境变量 `FOCUSAVATAR_API` 指定（未设置时默认示例：`
 ## 安装
 
 ```bash
-npx skills add https://github.com/lintqiu/focusavatar -s focusavatar -g -y
+npx skills add https://github.com/lintqiu/focusavatar -s focusavatar -y
 ```
 
 安装后通过 OpenClaw 或技能入口启动本技能即可；启动后会先提示获取 accessKeyId / accessKeySecret，再选择操作模式。
