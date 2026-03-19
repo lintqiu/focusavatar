@@ -25,13 +25,13 @@ def prompt(message):
     return input().strip()
 
 def print_credentials_guide():
-    """安装/启动时提示用户获取 accessKeyId 与 accessKeySecret（引入流程）"""
+    """安装/启动时提示用户获取 accessKeyId 与 accessKeySecret（体验流程 ① 设置凭证）"""
     print("\n" + "=" * 50)
-    print("  📌 使用前请先获取 accessKeyId 和 accessKeySecret（引入流程）")
-    print(f"  🔗 {CREDENTIALS_GET_URL}")
+    print("  📌 ① 设置凭证：使用前请先获取 accessKeyId 和 accessKeySecret")
+    print(f"  🔗 请前往：{CREDENTIALS_GET_URL}")
     print()
-    print("  1️⃣  请先前往上述地址 注册 账号")
-    print("  2️⃣  然后完成 购买/支付")
+    print("  1️⃣  前往上述地址 注册 账号")
+    print("  2️⃣  完成 购买/开通")
     print("  3️⃣  在控制台 创建密钥，复制 accessKeyId 和 accessKeySecret")
     print()
     print("  获取后请在下方输入，或设置环境变量免输入：")
@@ -60,27 +60,28 @@ def make_auth_headers(access_key_id: str, access_key_secret: str):
     return headers
 
 def run_submit_flow(access_key_id: str, access_key_secret: str):
-    """提交任务流程：输入 MP3/MP4/文字 → 确认 → 提交 → 轮询结果"""
+    """提交任务流程：③ MP3 → ④ MP4 → ⑤ 文字 → 确认 → 提交 → 轮询结果"""
+    print("\n  📌 接下来请按顺序完成：③ MP3 地址 → ④ MP4 地址 → ⑤ 文字内容\n")
     while True:
         mp3 = ""
         while not mp3:
-            mp3 = prompt("1️⃣  请输入 MP3 路径/URL: ")
+            mp3 = prompt("③ 请输入 MP3 路径/URL: ")
             if not mp3:
                 print("❌ 不能为空，请重新输入")
 
         mp4 = ""
         while not mp4:
-            mp4 = prompt("2️⃣  请输入 MP4 路径/URL: ")
+            mp4 = prompt("④ 请输入 MP4 路径/URL: ")
             if not mp4:
                 print("❌ 不能为空，请重新输入")
 
         text = ""
         while not text:
-            text = prompt("3️⃣  请输入需要合成的文字内容: ")
+            text = prompt("⑤ 请输入需要合成的文字内容: ")
             if not text:
                 print("❌ 不能为空，请重新输入")
 
-        print("\n📋 请确认信息：")
+        print("\n📋 ⑥ 请确认信息：")
         print(f"  MP3: {mp3}")
         print(f"  MP4: {mp4}")
         print(f"  文字: {text}")
@@ -135,56 +136,57 @@ def run_submit_flow(access_key_id: str, access_key_secret: str):
             print("\n💡 查询任务结果接口: POST " + API_ENDPOINT.rstrip("/") + "/skill/api/api/result ，需提供 orderNo。")
             return
 
-        print("\n⚙️  生成中...")
-        progress = 0
-        while progress < 99:
-            progress += 1
-            print(f"\r正在生成... {int(progress)}%", end='')
-            sys.stdout.flush()
-            time.sleep(2)
-
-        print(f"\r正在生成... 99% (等待后端处理)", end='')
-        sys.stdout.flush()
-
-        if "orderNo" in result:
-            task_id = result["orderNo"]
-            status_url = API_ENDPOINT.rstrip("/") + "/skill/api/api/result"
-            print(f'\n🚀 查询任务结果...orderNo: {task_id}')
-            while True:
-                try:
-                    r = requests.post(
-                        status_url,
-                        json={"orderNo": task_id},
-                        headers=headers,
-                        timeout=999999,
-                    )
-                    raw = r.json()
-                    data = json.loads(raw) if isinstance(raw, str) else raw
-
-                    progress_val = data.get("progress")
-                    if progress_val is not None and progress_val != "":
-                        try:
-                            p = min(int(progress_val), 99)
-                            print(f"\r正在生成... {p}% (等待后端处理)", end='')
-                            sys.stdout.flush()
-                        except (TypeError, ValueError):
-                            pass
-
-                    if data.get("status") == "done" and "videoUrl" in data:
-                        print("\n✅ 生成完成!")
-                        print(f"\n📺 视频链接: {data['videoUrl']}")
-                        # print("\n💡 之后可通过「查询任务结果」用 orderNo 查询: " + status_url)
-                        return
-                    elif data.get("status") == "error":
-                        print(f"\n❌ 生成失败: {data.get('message', '未知错误')}")
-                        return
-                    else:
-                        time.sleep(11)
-                except Exception:
-                    time.sleep(4)
-        else:
+        if "orderNo" not in result:
             print(f"\n📄 后端返回: {result}")
             return
+
+        task_id = result["orderNo"]
+        status_url = API_ENDPOINT.rstrip("/") + "/skill/api/api/result"
+        print(f"\n⚙️  任务已提交，orderNo: {task_id}")
+        print("📌 进度将实时显示（轮询后端）...\n")
+
+        poll_count = 0
+        while True:
+            try:
+                poll_count += 1
+                r = requests.post(
+                    status_url,
+                    json={"orderNo": task_id},
+                    headers=headers,
+                    timeout=999999,
+                )
+                raw = r.json()
+                data = json.loads(raw) if isinstance(raw, str) else raw
+
+                progress_val = data.get("progress")
+                status_str = data.get("status", "")
+                progress_display = None
+                if progress_val is not None and progress_val != "":
+                    try:
+                        if isinstance(progress_val, (int, float)):
+                            progress_display = min(int(progress_val), 100)
+                        else:
+                            progress_display = min(int(float(str(progress_val).strip())), 100)
+                    except (TypeError, ValueError):
+                        pass
+
+                progress_str = f"{progress_display}%" if progress_display is not None else "--"
+                print(f"  ⏳ 实时进度: {progress_str}  状态: {status_str or '处理中'}  [第 {poll_count} 次轮询]")
+                sys.stdout.flush()
+
+                if data.get("status") == "done" and "videoUrl" in data:
+                    print("\n✅ 生成完成!")
+                    print(f"\n📺 视频链接: {data['videoUrl']}")
+                    return
+                elif data.get("status") == "error":
+                    print(f"\n❌ 生成失败: {data.get('message', '未知错误')}")
+                    return
+                else:
+                    time.sleep(11)
+            except Exception as e:
+                print(f"  ⚠️ 轮询异常 (将重试): {e}")
+                sys.stdout.flush()
+                time.sleep(4)
 
 def run_query_flow(access_key_id: str, access_key_secret: str):
     """查询任务结果流程：输入 orderNo → 调用 /skill/api/api/result"""
@@ -200,7 +202,8 @@ def run_query_flow(access_key_id: str, access_key_secret: str):
             raw = r.json()
             return json.loads(raw) if isinstance(raw, str) else raw
 
-    order_no = prompt("请输入任务单号 (orderNo): ").strip()
+    print("  📌 查询任务结果：请输入任务单号 (orderNo)\n")
+    order_no = prompt("请输入 orderNo: ").strip()
     if not order_no:
         print("❌ 任务单号不能为空")
         return
@@ -228,10 +231,14 @@ def main():
     print("\n" + "=" * 50)
     print("       数字人生成工具")
     print("=" * 50)
+    print("  📌 ② 选择操作模式（两种模式）：")
+    print("     [1] 提交任务（生成视频）— 走 focusavatar 原流程")
+    print("     [2] 查询任务结果 — 需提供 orderNo")
+    print()
 
     choice = ""
     while choice not in ["1", "2"]:
-        choice = prompt("请选择：[1] 提交任务（生成视频）  [2] 查询任务结果（需 orderNo）\n选择: ")
+        choice = prompt("请选择 [1 或 2]: ")
         if choice not in ["1", "2"]:
             print("❌ 请输入 1 或 2")
 
