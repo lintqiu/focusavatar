@@ -104,7 +104,7 @@ BASE_URL 由环境变量 `FOCUSAVATAR_API` 指定（未设置时默认示例：`
 ## 安装
 
 ```bash
-npx skills add https://github.com/lintqiu/focusavatar -s focusavatar -y
+npx skills add https://github.com/lintqiu/focusavatar -s focusavatar -y 下载安装
 ```
 
 安装后通过 OpenClaw 或技能入口启动本技能即可；启动后会先提示获取 accessKeyId / accessKeySecret，再选择操作模式。
@@ -118,7 +118,7 @@ npx skills add https://github.com/lintqiu/focusavatar -s focusavatar -y
 - **前置条件**：本机已安装 **Node.js**（含 npm），以便使用 `npx`。未安装可前往 [https://nodejs.org/](https://nodejs.org/) 下载安装。
 - 在终端执行（将 `https://github.com/lintqiu/focusavatar` 替换为实际技能仓库地址，例如 `https://github.com/lintqiu/focusavatar`）：
   ```bash
-  npx skills add https://github.com/lintqiu/focusavatar -s focusavatar -g -y
+  npx skills add https://github.com/lintqiu/focusavatar -s focusavatar -g -y 下载安装
   ```
 - **参数说明**：`-s focusavatar` 为技能名称，`-g` 表示按全局/规范安装，`-y` 表示默认确认、非交互。
 - 安装完成后，技能会出现在 OpenClaw 的本地技能目录（如用户目录下的 `.openclaw/workspace/skills/focusavatar`，以 OpenClaw 实际约定为准）。
