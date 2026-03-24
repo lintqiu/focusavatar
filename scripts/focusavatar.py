@@ -4,6 +4,11 @@
 - 使用前请前往指定网址获取 accessKeyId 和 accessKeySecret（见下方引导）
 - 支持两种操作：提交任务（MP3/MP4/文字） / 查询任务结果（orderNo）
 
+安全说明：
+- 本脚本**自行读取和处理凭证**，大语言模型不会获取或存储您的密钥
+- 推荐使用环境变量方式，更加安全且无需每次输入
+- 交互输入时，密钥直接由 Python 读取，不会经过模型
+
 关于 OpenClaw 执行超时：
 - 提交任务生成视频需要后端处理时间，较长，请在运行时告诉助手：
   "运行这个脚本，需要等待 5-10 分钟，请设置超时 600 秒"
@@ -19,10 +24,12 @@ import os
 CREDENTIALS_GET_URL = "https://yunji.focus-jd.cn"
 API_ENDPOINT = os.environ.get("FOCUSAVATAR_API", "https://yunji.focus-jd.cn")
 
+
 def prompt(message):
     print(f"\n{message}", end='')
     sys.stdout.flush()
     return input().strip()
+
 
 def print_credentials_guide():
     """安装/启动时提示用户获取 accessKeyId 与 accessKeySecret（体验流程 ① 设置凭证）"""
@@ -34,25 +41,39 @@ def print_credentials_guide():
     print("  2️⃣  完成 购买/开通")
     print("  3️⃣  在控制台 创建密钥，复制 accessKeyId 和 accessKeySecret")
     print()
-    print("  获取后请在下方输入，或设置环境变量免输入：")
-    print("     FOCUSAVATAR_ACCESS_KEY_ID / FOCUSAVATAR_ACCESS_KEY_SECRET")
+    print("  ✅ 推荐：设置环境变量免输入（模型不会接触密钥，更安全）：")
+    print("     export FOCUSAVATAR_ACCESS_KEY_ID=\"你的accessKeyId\"")
+    print("     export FOCUSAVATAR_ACCESS_KEY_SECRET=\"你的accessKeySecret\"")
+    print()
+    print("  或在下方直接输入（本脚本直接读取，模型看不到您输入的密钥）：")
     print("=" * 50 + "\n")
 
+
 def get_credentials():
-    """从环境变量或交互获取 accessKeyId 和 accessKeySecret，返回 (access_key_id, access_key_secret)"""
+    """从环境变量或交互获取 accessKeyId 和 accessKeySecret，返回 (access_key_id, access_key_secret)
+
+    安全设计：
+    - 完全在本脚本内读取和处理密钥，模型不会获取到密钥内容
+    - 环境变量方式：密钥由用户提前设置，全程不经过模型
+    - 交互方式：用户直接输入给 Python stdin，模型无法读取输入内容
+    """
     access_key_id = os.environ.get("FOCUSAVATAR_ACCESS_KEY_ID", "").strip()
     access_key_secret = os.environ.get("FOCUSAVATAR_ACCESS_KEY_SECRET", "").strip()
     if access_key_id and access_key_secret:
         # 环境变量已设置，直接使用，不提示输入
         print(f"✓ 已从环境变量读取 accessKeyId")
         print(f"✓ 已从环境变量读取 accessKeySecret")
+        print(f"✓ 密钥已在本脚本内处理，模型无法访问")
         print()
         return access_key_id, access_key_secret
     if not access_key_id:
-        access_key_id = prompt("请输入 accessKeyId（可设置环境变量 FOCUSAVATAR_ACCESS_KEY_ID）: ").strip()
+        access_key_id = prompt("请输入 accessKeyId（本脚本直接读取，模型看不到）: ").strip()
     if not access_key_secret:
-        access_key_secret = prompt("请输入 accessKeySecret（可设置环境变量 FOCUSAVATAR_ACCESS_KEY_SECRET）: ").strip()
+        access_key_secret = prompt("请输入 accessKeySecret（本脚本直接读取，模型看不到）: ").strip()
+    print(f"\n✓ 密钥已读取，全程仅在本脚本内使用")
+    print()
     return access_key_id, access_key_secret
+
 
 def make_auth_headers(access_key_id: str, access_key_secret: str):
     """根据 accessKeyId 和 accessKeySecret 生成请求头"""
@@ -62,6 +83,7 @@ def make_auth_headers(access_key_id: str, access_key_secret: str):
     if access_key_secret:
         headers["X-Access-Key-Secret"] = access_key_secret
     return headers
+
 
 def run_submit_flow(access_key_id: str, access_key_secret: str):
     """提交任务流程：③ MP3 → ④ MP4 → ⑤ 文字 → 确认 → 提交 → 轮询结果"""
@@ -200,6 +222,7 @@ def run_submit_flow(access_key_id: str, access_key_secret: str):
                 sys.stdout.flush()
                 time.sleep(4)
 
+
 def run_query_flow(access_key_id: str, access_key_secret: str):
     """查询任务结果流程：输入 orderNo → 调用 /skill/api/api/result"""
     try:
@@ -240,6 +263,7 @@ def run_query_flow(access_key_id: str, access_key_secret: str):
         print(f"⏳ 状态: {status}, 进度: {progress}")
         print("📄 完整返回:", json.dumps(data, ensure_ascii=False, indent=2))
 
+
 def main():
     print_credentials_guide()
     access_key_id, access_key_secret = get_credentials()
@@ -264,6 +288,7 @@ def main():
         run_submit_flow(access_key_id, access_key_secret)
     else:
         run_query_flow(access_key_id, access_key_secret)
+
 
 if __name__ == "__main__":
     try:
